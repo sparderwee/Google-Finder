@@ -16,7 +16,7 @@ http://www.saaee.com/download/google-finder.zip
 其他平台请自行编译
 ##更多问题请访问
 http://www.saaee.com/googlefinder
-##谷歌的IP段粗体文本
+##谷歌的IP段
 可以使用命令行查看
 ```
 nslookup -q=TXT _netblocks.google.com 8.8.8.8
