@@ -7,9 +7,10 @@ import (
     "time"
     "os"
     "crypto/tls"
+    "bufio"
 )
 var AllIP = ""
-func ping_ip(host string, port string) bool {
+func ping_ip(host string) bool{
     fmt.Println("正在测试："+host)
     var (
         remote = "https://"+host
@@ -20,14 +21,15 @@ func ping_ip(host string, port string) bool {
     client := &http.Client{Transport: tr}
     resp,err := client.Get(remote)
     if err != nil {
-        fmt.Println(err)
+        //fmt.Println(err)
         return false
     }
+    defer resp.Body.Close()
     if resp.StatusCode == 200 {
         AllIP+=host+"|"
         fmt.Println("确定可用："+host)
+        return true
     }
-    resp.Body.Close()
     return true
 }
 func ip_to_num(ip string) int {
@@ -49,35 +51,64 @@ func num_to_ip(num int64) string {
     data := fmt.Sprintf("%d.%d.%d.%d", ip1_int, ip2_int, ip3_int, ip4_int)
     return data
 }
-func main() {
-    args := len(os.Args)
-    x := "210.242.125.0"
-    y := "210.242.125.255"
-    if args > 2 {
-        x = os.Args[1]
-        y = os.Args[2]
-        fmt.Println("开始测试自定义IP段")
-    }else{
-        fmt.Println("开始测试默认IP段")
-    }
+func run(x string, y string) {
     ip1 := ip_to_num(x)
     ip2 := ip_to_num(y)
     for ip1 <= ip2 {
         ipint64 := int64(ip1)
-        ip_data := num_to_ip(ipint64)
-        go ping_ip(ip_data, "80")
-        time.Sleep(50 * time.Millisecond)
+        ip := num_to_ip(ipint64)
+        go ping_ip(ip)
+        time.Sleep(20 * time.Millisecond)
         ip1++
     }
-    fmt.Println("测试结束...等待自动退出")
-    time.Sleep(5*time.Second)
-    content := "[iplist]\r\n"
-    content += "google_cn = "+AllIP+"\r\n"+"google_hk = "+AllIP
-    file_name := "proxy.user.ini"
-    fd,err := os.Create(file_name)
-    defer fd.Close()
-    if err != nil {
-        fmt.Println(file_name,err)
+}
+func main() {
+    for {
+        fmt.Println("*** Google-Finder 1.0.1 ***")
+        fmt.Println("请输入IP范围，多组范围之间用(;)隔开，跳过请直接回车：")
+        reader := bufio.NewReader(os.Stdin)
+        x := "210.242.125.0"
+        y := "210.242.125.255"
+        data, _, _ := reader.ReadLine()
+        command := string(data)
+        if command == "" {
+            args := len(os.Args)
+            if args > 2 {
+                x = os.Args[1]
+                y = os.Args[2]
+                fmt.Println("已载入启动参数...")
+            }
+            run(x,y)
+        }else{
+            iprans := strings.Split(command, ";")
+            for _,value := range iprans {
+                if value == "" {
+                    break
+                }
+                ipran := strings.Split(value, "-")
+                x = ipran[0]
+                y2 := ipran[1]
+                ys := len(strings.Split(x, ".")[3])
+                yf := len(x)-ys
+                y = x[:yf]+y2
+                run(x,y)
+            }
+        }
+        if AllIP == "" {
+            fmt.Println(" = =!! 这段范围中一个都没找到，换一段再试试.")
+        }else{
+            fmt.Println(" ^_^ 测试结束...等待自动退出...记得重新打开Goagent")
+            time.Sleep(5*time.Second)
+            content := "[iplist]\r\n"
+            content += "google_cn = "+AllIP+"\r\n"+"google_hk = "+AllIP
+            file_name := "proxy.user.ini"
+            fd,err := os.Create(file_name)
+            defer fd.Close()
+            if err != nil {
+                fmt.Println(file_name,err)
+            }
+            fd.WriteString(content)
+            break
+        }
     }
-    fd.WriteString(content)
 }
